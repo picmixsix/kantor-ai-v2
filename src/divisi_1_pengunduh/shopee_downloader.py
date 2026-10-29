@@ -1,65 +1,65 @@
 import os
 import json
-import glob
-import requests
+import gdown
 
-def download_image(url, save_path):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+QUEUE_INPUT_DIR = "queue/0_stok_link"
+QUEUE_OUTPUT_DIR = "queue/1_gambar_ready"
+IMAGE_OUTPUT_DIR = "output/images"
+
+os.makedirs(QUEUE_OUTPUT_DIR, exist_ok=True)
+os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
+
+def download_from_gdrive(drive_url, target_folder):
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code == 200:
-            with open(save_path, 'wb') as f:
-                f.write(response.content)
-            return True
+        # Menangani tautan folder atau file tunggal dari Google Drive
+        if "folder" in drive_url or "id=" in drive_url:
+            gdown.download_folder(url=drive_url, output=target_folder, quiet=False, remaining_ok=True)
+        else:
+            gdown.download(url=drive_url, output=os.path.join(target_folder, "gdrive_img.jpg"), quiet=False, fuzzy=True)
+        
+        valid_extensions = ('.jpg', '.jpeg', '.png', '.webp')
+        downloaded_files = []
+        for root, _, files in os.walk(target_folder):
+            for file in files:
+                if file.lower().endswith(valid_extensions):
+                    downloaded_files.append(os.path.join(root, file))
+        return downloaded_files
     except Exception as e:
-        print(f"[Divisi 1] Gagal mengunduh {url}: {e}")
-    return False
+        print(f"[Divisi 1 - Biru] Error download dari Google Drive: {e}")
+        return []
 
-def process_download():
-    stok_files = glob.glob("queue/0_stok_link/*.json")
-    if not stok_files:
-        print("[Divisi 1 - Biru] Tidak ada stok link baru di queue/0_stok_link/.")
+def process_queue():
+    if not os.path.exists(QUEUE_INPUT_DIR):
         return
 
-    for filepath in stok_files:
-        filename = os.path.basename(filepath)
-        task_id = os.path.splitext(filename)[0]
-        print(f"[Divisi 1 - Biru] Memproses unduhan nyata untuk: {filename}")
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            
-        img_urls = data.get("image_urls", [])
-        saved_image_paths = []
-        
-        task_img_dir = os.path.join("output", "images", task_id)
-        os.makedirs(task_img_dir, exist_ok=True)
-        
-        for idx, url in enumerate(img_urls):
-            img_path = os.path.join(task_img_dir, f"img_{idx+1}.jpg")
-            if download_image(url, img_path):
-                saved_image_paths.append(img_path)
-                
-        if not saved_image_paths:
-            placeholder_path = os.path.join(task_img_dir, "default.jpg")
-            from PIL import Image, ImageDraw
-            img = Image.new('RGB', (1080, 1920), color=(30, 30, 30))
-            d = ImageDraw.Draw(img)
-            d.text((100, 960), f"PRODUK: {data.get('product_title', 'SHOPEE PRODUCT')}", fill=(255, 255, 255))
-            img.save(placeholder_path)
-            saved_image_paths.append(placeholder_path)
+    files = [f for f in os.listdir(QUEUE_INPUT_DIR) if f.endswith('.json')]
+    if not files:
+        print("[Divisi 1 - Biru] Tidak ada stok link baru di queue/0_stok_link/")
+        return
 
-        data["status"] = "IMAGES_READY"
-        data["downloaded_images"] = saved_image_paths
-        
-        target_path = os.path.join("queue/1_gambar_ready", filename)
-        with open(target_path, 'w', encoding='utf-8') as f:
+    for file_name in files:
+        input_json_path = os.path.join(QUEUE_INPUT_DIR, file_name)
+        base_name = os.path.splitext(file_name)[0]
+
+        with open(input_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        drive_url = data.get("gdrive_url") or data.get("product_url", "")
+        target_img_dir = os.path.join(IMAGE_OUTPUT_DIR, base_name)
+        os.makedirs(target_img_dir, exist_ok=True)
+
+        print(f"[Divisi 1 - Biru] Mengunduh gambar dari Google Drive untuk: {file_name}")
+        downloaded = download_from_gdrive(drive_url, target_img_dir)
+
+        data["downloaded_images"] = downloaded
+        data["status"] = "GAMBAR_READY"
+
+        output_json_path = os.path.join(QUEUE_OUTPUT_DIR, file_name)
+        with open(output_json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
-            
-        os.remove(filepath)
-        print(f"[Divisi 1 - Biru] Berhasil unduh {len(saved_image_paths)} gambar. Dipindahkan ke queue/1_gambar_ready/{filename}")
+
+        os.remove(input_json_path)
+        print(f"[Divisi 1 - Biru] Berhasil mengunduh {len(downloaded)} gambar. Dipindahkan ke {output_json_path}")
 
 if __name__ == "__main__":
-    process_download()
+    process_queue()
