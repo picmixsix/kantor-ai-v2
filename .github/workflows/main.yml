@@ -1,49 +1,49 @@
-name: Picmixsi Content Pipeline
+name: Promo Content Pipeline
 
 on:
   push:
-    branches:
-      - main
+    paths:
+      - 'queue/0_stok_link/**'
   workflow_dispatch:
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install Python Dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Downloader
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Run Downloader (Divisi 1)
         run: python src/divisi_1_pengunduh/shopee_downloader.py || exit 0
 
-      - name: Run Render Engine
-        run: python src/divisi_2_video/render_engine.py || exit 0
+      # ---- SET UP REMOTION (NODE.JS) ----
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-      - name: Run Approval Gate
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python src/divisi_3_direktur/approval_gate.py || exit 0
+      - name: Install Node Dependencies
+        run: npm install
 
-      - name: Run Social Uploader
-        run: python src/divisi_4_uploader/social_uploader.py || exit 0
+      - name: Install Chromium for Remotion
+        run: npx remotion browser ensure
+
+      - name: Run Remotion Render (Divisi 2)
+        run: node render.js || exit 0
 
       - name: Commit and push changes back
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          mkdir -p output queue
-          git add queue/
-          [ -d "output" ] && git add output/ || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update content pipeline queue and output" && git push)
+          git add output/ queue/
+          git commit -m "Auto-render Remotion promo video" || echo "No changes to commit"
+          git push
