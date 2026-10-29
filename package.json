@@ -1,0 +1,10 @@
+{
+  "name": "kantor-ai-v2",
+  "version": "2.0.0",
+  "description": "Ekosistem Otomatisasi Konten & Shopee Affiliate",
+  "main": "src/divisi_2_video/render_engine.py",
+  "scripts": {
+    "start": "python src/divisi_1_pengunduh/shopee_downloader.py"
+  },
+  "dependencies": {}
+}
