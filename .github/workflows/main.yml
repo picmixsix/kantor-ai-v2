@@ -43,5 +43,5 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add queue/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update content pipeline queue" && git push)
+          git add queue/ output/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update content pipeline queue and output" && git push)
