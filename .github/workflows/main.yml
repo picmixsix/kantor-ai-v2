@@ -1,0 +1,47 @@
+name: Picmixsi Content Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Downloader
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python src/divisi_1_pengunduh/shopee_downloader.py || exit 0
+
+      - name: Run Render Engine
+        run: python src/divisi_2_video/render_engine.py || exit 0
+
+      - name: Run Approval Gate
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python src/divisi_3_direktur/approval_gate.py || exit 0
+
+      - name: Run Social Uploader
+        run: python src/divisi_4_uploader/social_uploader.py || exit 0
+
+      - name: Commit and push changes back
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add queue/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update content pipeline queue" && git push)
