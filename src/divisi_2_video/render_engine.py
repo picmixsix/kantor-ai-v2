@@ -5,14 +5,14 @@ from PIL import Image, ImageDraw
 
 def render_real_video(task_id, images, title, output_video_path):
     try:
-        from moviepy.editor import ImageClip, concatenate_videoclips
-        
+        from moviepy import ImageClip, concatenate_videoclips
+
         clips = []
         for img_path in images:
             if os.path.exists(img_path):
                 clip = ImageClip(img_path).set_duration(3).resize(newsize=(1080, 1920))
                 clips.append(clip)
-                
+            
         if not clips:
             raise Exception("Tidak ada gambar valid untuk dirender.")
             
@@ -35,7 +35,7 @@ def render_real_video(task_id, images, title, output_video_path):
 def process_render():
     gambar_files = glob.glob("queue/1_gambar_ready/*.json")
     rejected_files = glob.glob("queue/4_rejected/*.json")
-    
+
     target_files = gambar_files + rejected_files
     if not target_files:
         print("[Divisi 2 - Hijau] Tidak ada antrean video baru/revisi.")
@@ -45,24 +45,24 @@ def process_render():
         filename = os.path.basename(filepath)
         task_id = os.path.splitext(filename)[0]
         print(f"[Divisi 2 - Hijau] Memproses RENDER REAL VIDEO untuk: {filename}")
-        
+
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
+
         images = data.get("downloaded_images", [])
         title = data.get("product_title", "Produk Rekomendasi")
         output_video = os.path.join("output", "videos", f"{task_id}.mp4")
-        
+
         success = render_real_video(task_id, images, title, output_video)
-        
+
         if success:
             data["status"] = "AWAITING_APPROVAL"
             data["video_path"] = output_video
-            
+
             target_path = os.path.join("queue/2_video_ready", filename)
             with open(target_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2)
-                
+
             os.remove(filepath)
             print(f"[Divisi 2 - Hijau] Video nyata dikirim ke Ruang Direktur: queue/2_video_ready/{filename}")
         else:
