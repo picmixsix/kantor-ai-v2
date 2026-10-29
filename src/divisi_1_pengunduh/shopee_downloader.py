@@ -12,10 +12,10 @@ os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 def download_from_gdrive(drive_url, target_folder):
     try:
         # Menangani tautan folder atau file tunggal dari Google Drive
-        if "folder" in drive_url or "id=" in drive_url:
+        if "folder" in drive_url or "id=" in drive_url or "folders" in drive_url:
             gdown.download_folder(url=drive_url, output=target_folder, quiet=False, remaining_ok=True)
         else:
-            gdown.download(url=drive_url, output=os.path.join(target_folder, "gdrive_img.jpg"), quiet=False, fuzzy=True)
+            gdown.download(url=drive_url, output=os.path.join(target_folder, "gdrive_img.jpg"), quiet=False)
         
         valid_extensions = ('.jpg', '.jpeg', '.png', '.webp')
         downloaded_files = []
